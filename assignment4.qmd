@@ -1,0 +1,320 @@
+---
+title: "assignment4"
+author: humza khan 
+format: html
+editor: visual
+---
+
+## 
+
+1.  Rerun programs in Gentle Introduction to Machine Learning notebook (https://datageneration.org/gentlemachinelearning/module4_unsupervisedlearning)
+
+```{=html}
+<!-- -->
+```
+a.  Hint: read the online notebook and download the R programs in that class GitHub
+b.  Can you apply these methods on your own data?
+
+```{=html}
+<!-- -->
+```
+2.  Post output to own website
+
+load
+
+```{r}
+# install and load pacman for package management
+if (!require("pacman", character.only = TRUE)) install.packages("pacman")
+library(pacman)
+# load libraries using pacman
+p_load("Hmisc", 
+        "tidyverse",
+        "tidytext",
+        "XML",
+        "wordcloud",
+        "RColorBrewer",
+        "NLP",
+        "tm",
+        "quanteda",
+        "quanteda.textstats" ,
+        "rtweet",
+        "igraph",
+        "ggraph",
+        "reshape2",
+        "ggridges",
+        "lubridate",
+        "maps",
+        "syuzhet",
+        "textdata",
+        "easypackages", 
+        "boot",
+        "kknn",
+        "caret",
+        "leaps", 
+        "stargazer",
+        "corrplot", 
+        "xtable")
+```
+
+```{r}
+# tweets that mention "boycott"
+tweets_boycott <- read.csv("https://shawnnstewart.github.io/test_data/tweets_boycott.csv?raw=true")
+
+# NRC lexicon
+nrc <- get_sentiments("nrc") #from tidytext
+
+#NOTE if problems loading: PC/New versions of R studio require "read.csv" to correctly call the dataset. Older versions require "read_csv". 
+```
+
+```{r}
+tweets <- tweets_boycott %>%
+      mutate(text = gsub("http\\S+", "", text)) %>%  # remove URLs
+      mutate(text = gsub("@\\S+", "", text)) %>% # remove mentions
+      filter(lang == "en") # keep only English tweets, note for boycott it's already filtered
+```
+
+```{r}
+# unnest your tweets so that there is one word per line
+tweets_tidy <- tweets |> 
+    unnest_tokens(word, text)
+
+tweets_tidy <- tweets_tidy |> 
+    anti_join(stop_words)
+```
+
+```{r}
+addtl_stop_words <- c("fifa",
+                    "fifaworldcup",
+                    "qatar",
+                    "qatarworldcup2022",
+                    "boycottqatar2022", 
+                    "boycottqatar",
+                    "worldcupqatar",
+                    "worldcupqatar2022", 
+                    "qatarworldcup", 
+                    "qatarworldcup2022",
+                    "worldcup2022",
+                    "world",
+                    "cup",
+                    "rt",
+                    "2022",
+                    "qatar2022", 
+                    "fifaworldcup", 
+                    "fifaworldcup2022", 
+                    "2",
+                    "quatar",
+                    "quatarworldcup2022",
+                    "boycottquatar2022", 
+                    "boycottquatar",
+                    "worldcupquatar",
+                    "worldcupquatar2022", 
+                    "quatarworldcup", 
+                    "quatarworldcup2022",
+                    "quatar2022"
+                    )
+
+custom_stop_words <- bind_rows(
+    tibble(word = addtl_stop_words,
+               lexicon = c("custom")),
+    stop_words)
+
+tweets_tidy <- tweets_tidy |> 
+    anti_join(custom_stop_words)
+```
+
+```{r}
+nrcjoy <- get_sentiments("nrc") %>%
+  filter(sentiment == "joy")
+
+# This creates a new column called "sentiment" that has a cell value of "joy" or "NA". We can turn this into a binary variable instead. 
+tweets_joy <- tweets_tidy %>%
+    full_join(nrcjoy) |> 
+    rename(joy = sentiment) |> 
+    mutate(joy = ifelse(joy != "", 1, 0))
+
+```
+
+```{r}
+# first, get the list of emotions/polarities we want to split by
+emotions <- distinct(nrc, sentiment)
+
+# then, we want to make a function that takes an emotion and a dataset and returns a column in that dataset with a binary variable for each word, saying which emotions it is associated with. The function will need the name of the emotion as it appears in the lexicon and assums the dataset is unnested at the word level. 
+
+# We give it a unique name to avoid issues with downloaded libraries and naming conflicts. We also use "emo" instead of "sentiment" so it does not cause conflicts with the default name of columns in NRC. 
+
+# lexicon and emo should be strings, like "nrc" and "disgust" because they will be fed into another function. This function will take "nrc" as the default lexicon. 
+
+emo_column <- function(df, emo, lexicon = "nrc"){
+    # we are first going to extract just those sentiment words from lexicon
+    # let's give our subset a name
+    lexicon_subset <- paste0(lexicon,"_", emo)
+    lexicon_subset <- get_sentiments(lexicon) %>%
+         filter(sentiment == emo)
+
+    df <- df %>%
+        full_join(lexicon_subset) |>
+        rename({{emo}} := sentiment) |>
+        mutate(!!emo := ifelse(is.na(!!sym(emo)), 0, 1))    
+    return(df)
+}
+
+# now that the function works, we run it through a for loop to create columns for each emotion/polarity in nrc
+
+# get list of emotions from the nrc lexicon
+emotions_list <- unique(nrc$sentiment)
+
+for(emotion in emotions_list){
+    tweets_tidy <- emo_column(tweets_tidy, emotion)
+}
+```
+
+```{r}
+# get sums of emotion words grouped by tweet 
+# we also add a column with the cleaned tweet text
+tweets_tidy_sum <- tweets_tidy |> 
+    group_by(id, author_id, conversation_id) |> 
+    dplyr::summarize(negative = sum(negative),
+              positive = sum(positive),
+              fear = sum(fear),
+              sadness = sum(sadness),
+              anger = sum(anger),
+              disgust = sum(disgust),
+              trust = sum(trust),
+              surprise = sum(surprise),
+              joy = sum(joy),
+              anticipation = sum(anticipation),
+              text = paste(word, collapse=" ")
+              )
+```
+
+```{r}
+#Humza: exploration and descriptive statistics for tweets_tidy_sum
+View(tweets_tidy_sum)
+#
+head(tweets_tidy_sum)
+#
+colnames(tweets_tidy_sum)
+#
+class(tweets_tidy_sum)
+#
+str(tweets_tidy_sum)
+
+#descrip stats - mean 
+
+#Summary of the Text: mean for negative and positive are almost the same
+#words associated with trust, mean .401, are most common in the 8 emotions
+#words associated with surprise, mean 0.1149, are least common in the 8 emotions
+summary(tweets_tidy_sum)
+
+#use summary(tweets_tidy_sum) to add table with mean of each category listing from least to most
+
+#
+pos <- sort(tweets_tidy_sum$positive, decreasing = TRUE)
+summary(pos)
+barplot(pos)
+
+
+```
+```{r}
+#
+neg <- tweets_tidy_sum$negative
+summary(neg)
+barplot(neg)
+
+#more negative than positive (by more than 1000) as expected 
+get_sentiments("nrc") %>% 
+  filter(sentiment %in% c("positive", "negative")) %>% 
+  count(sentiment)
+```
+
+```{r}
+
+nohandles <- str_replace_all(tweets$text, "@\\w+", "")
+wordCorpus <- Corpus(VectorSource(nohandles))
+wordCorpus <- tm_map(wordCorpus, removePunctuation)
+wordCorpus <- tm_map(wordCorpus, content_transformer(tolower))
+wordCorpus <- tm_map(wordCorpus, removeWords, stopwords("english"))
+wordCorpus <- tm_map(wordCorpus, removeWords, c("amp"))
+wordCorpus <- tm_map(wordCorpus, stripWhitespace)
+
+# prepare wordcloud
+wordcloud(words = wordCorpus,
+          scale=c(5,0.1),
+          max.words=1000, 
+          random.order=FALSE, 
+          rot.per=0.35, 
+          use.r.layout=FALSE)
+```
+
+
+```{r}
+
+### Here's one with a lot more stop words. It shows words beyond boycott and qatar but may be too small to explore. Putting the code in here so we can use it if we want, or remove if we don't.### 
+
+nohandles <- str_replace_all(tweets$text, "@\\w+", "")
+wordCorpus <- Corpus(VectorSource(nohandles))
+wordCorpus <- tm_map(wordCorpus, removePunctuation)
+wordCorpus <- tm_map(wordCorpus, content_transformer(tolower))
+wordCorpus <- tm_map(wordCorpus, removeWords, stopwords("english"))
+wordCorpus <- tm_map(wordCorpus, removeWords, c("amp"))
+wordCorpus <- tm_map(wordCorpus, stripWhitespace)
+wordCorpus <- tm_map(wordCorpus, removeWords, c("qatar"))
+wordCorpus <- tm_map(wordCorpus, removeWords, c("qatarworldcup"))
+wordCorpus <- tm_map(wordCorpus, removeWords, c("boycottqatar"))
+wordCorpus <- tm_map(wordCorpus, removeWords, c("fifaworldcup"))
+wordCorpus <- tm_map(wordCorpus, removeWords, c("qatarworldcup2022"))
+wordCorpus <- tm_map(wordCorpus, removeWords, c("qatar2022"))
+wordCorpus <- tm_map(wordCorpus, removeWords, c("world"))
+
+
+
+
+# prepare wordcloud
+wordcloud(words = wordCorpus,
+          scale=c(5,0.1),
+          max.words=1000, 
+          random.order=FALSE, 
+          rot.per=0.35, 
+          use.r.layout=FALSE)
+```
+
+
+```{r}
+# Using some of our earlier versions of code to create the prepared data for the term document matrix
+# let's use our tidy data to put the tweets back together, minus the stop words
+tweets_tidy_cluster <- tweets_tidy |> 
+    group_by(id, author_id, conversation_id) |> 
+    summarize(text = paste(word, collapse=" "))
+
+# Create vector
+words.vec <- VectorSource(tweets_tidy_cluster$text)
+wordCorpus <- Corpus(words.vec)
+
+# Bali, Shakar, and Sharma's (2017) code to plot hierarchical clusters
+
+# computer term-document matrix
+twtrTermDocMatrix <- TermDocumentMatrix(wordCorpus)
+
+twtrTermDocMatrix2 <- removeSparseTerms(twtrTermDocMatrix,
+                                        sparse = 0.97)
+
+tweet_matrix <- as.matrix(twtrTermDocMatrix2)
+
+# prepare distance matrix
+distMatrix <- dist(scale(tweet_matrix))
+# perform hierarchical clustering
+fit <- hclust(distMatrix,method="single")
+# plot the dendrogram
+plot(fit)
+```
+
+```{r}
+###Again we can use/lose any of this, but this is an exploration of additional ways to visualizae the dendrogram to attempt to make it more interpretable### 
+# plot the dendrogram
+
+plot(fit, hang = -1, cex = 0.6)
+plot(fit, type = "rectangle", ylab = "Height")
+
+
+
+```

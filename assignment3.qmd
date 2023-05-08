@@ -1,0 +1,55 @@
+---
+title: "assignment3"
+author: humza khan 
+format: html
+editor: visual
+---
+
+Use the TEDS2016 dataset to run a multiple regression model.
+
+Load
+
+```{r}
+pacman::p_load(haven, gridExtra, ggExtra, RColorBrewer, ggplot2, tidyr, dplyr, haven)
+#
+TEDS_2016 <- read_stata("https://github.com/datageneration/home/blob/master/DataProgramming/data/TEDS_2016.dta?raw=true")
+#
+TEDS_2016$Tondu<-as.numeric(TEDS_2016$Tondu,labels=c("Unificationnow”,“Statusquo,unif.infuture”,“Statusquo,decidelater","Statusquoforever","Statusquo,indep.infuture","Independencenow”,“Noresponse"))
+```
+
+Recode and create a subset
+
+```{r}
+sel_dat<-TEDS_2016%>%select(Tondu,female, DPP, age, income, edu, Taiwanese, Econ_worse,votetsai)
+#
+fit1<-lm(Tondu~age+edu+income, data=sel_dat)
+#
+summary(fit1)
+```
+
+Q: Run a regplot on the dependent variable using: a. Age b. Education c. Income
+
+```{r}
+ta<-ggplot(sel_dat, aes(x=age,y=Tondu))+
+  geom_smooth(method = "lm", se = F, show.legend = F)+
+  geom_point(show.legend = F, position = "jitter",alpha=.5, pch=16) + ggthemes::theme_few() +
+  labs(x="Age", y="TONDU preferences")
+#
+te<-ggplot(sel_dat, aes(x=edu,y=Tondu))+
+  geom_smooth(method = "lm", se = F, show.legend = F)+
+  geom_point(show.legend = F, position = "jitter",alpha=.5, pch=16) + ggthemes::theme_few() +
+  labs(x="Education", y="TONDU preferences")
+#
+ti<-ggplot(sel_dat, aes(x=income,y=Tondu))+
+  geom_smooth(method = "lm", se = F, show.legend = F)+
+  geom_point(show.legend = F, position = "jitter",alpha=.5, pch=16) + ggthemes::theme_few() +
+  labs(x="Income", y="TONDU preferences")
+#
+grid.arrange(ta,te,ti,ncol=3,nrow=1)
+```
+
+Q: What is the problem? The DV has a lot of values. We can see this by using the unique function below. A different approach, such as using a multinomial logit regression would be better suited. Methods such as linear regression are weak for this case.
+
+```{r}
+unique(sel_dat$Tondu)
+```

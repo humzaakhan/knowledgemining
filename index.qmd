@@ -1,0 +1,58 @@
+---
+title: "Humza Khan"
+about:
+  template: trestles
+  image: DP.png
+  image-shape: round
+  links:
+    - href: https://twitter.com/HumzaKhan50
+      icon: twitter
+      text: Twitter
+    - href: https://www.linkedin.com/in/humza-khan-498b6821a/
+      icon: linkedin
+      text: Linkedin
+    - href: https://epps.utdallas.edu/phd-students/humza-khan/
+      text: UTD Profile
+---
+Doctoral Student \| Teaching Assistant \| Public Policy and Political Economy
+
+## Education
+
+• Ph.D. in Public Policy and Political Economy. University of Texas at Dallas, Fall 2021-present.
+
+• M.S. in International Political Economy. University of Texas at Dallas, 2021.
+
+• B.S. in Marketing from the University of New Orleans, 2016.
+
+## Courses Taught as Teaching Assistant/Instructor
+
+•American National Government” (Summer 2023)
+
+•International Political Economy” (Spring 2023)
+
+•Topics in Science, Technology, and Institutions: from Writing to Cryptocurrency (Fall 2022)
+
+•International Political Economy” (Summer 2022)
+
+•American Political Institutions” (Spring 2022)
+
+•Structural Equation and Multilevel Hierarchical Modeling” (Fall 2021)
+
+## Research Interests 
+
+•Data Science
+
+•Machine Learning
+
+•Political Violence
+
+•Civil Conflict
+
+•Human Rights
+
+•Terrorism
+
+
+## Email
+
+humza.khan3@utdallas.edu

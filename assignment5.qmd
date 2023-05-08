@@ -1,0 +1,100 @@
+---
+title: "assignment5"
+author: humza khan 
+format: html
+editor: visual
+---
+
+## 
+
+1.  Text Mining exercise:
+
+<!-- -->
+
+a.  Run Lab_textmining01.R and create Wordcloud for Winston Churchill's speech
+b.  Run sentiment analyses using the following sample programs:
+c.  Lab_sentiment_tidytext01.R
+d.  Lab_sentiment_syuzhet01.R
+
+<!-- -->
+
+2.  Post output to own website
+
+```{r}
+#clear memory
+rm(list=ls())
+
+# Install the easypackages package 
+# install.packages("easypackages")
+library(easypackages)
+
+# Load multiple packages using easypackage function "packages"
+packages("XML","wordcloud","RColorBrewer","NLP","tm","quanteda", prompt = T)
+
+# Download text data from website
+chLocation <-URLencode("http://www.historyplace.com/speeches/churchill-hour.htm")
+
+```
+
+## 
+
+```{r}
+# use htmlTreeParse function to read and parse paragraphs
+doc.html<- htmlTreeParse(chLocation, useInternal=TRUE)
+#
+ch <- unlist(xpathApply(doc.html, '//p', xmlValue))
+ch
+#
+head(ch, 3)
+```
+
+```{r}
+# Vectorize mlk 
+words.vec <- VectorSource(ch)
+
+# Check the class of words.vec
+class(words.vec)
+
+# Create Corpus object for preprocessing
+words.corpus <- Corpus(words.vec)
+inspect(words.corpus)
+
+# Turn all words to lower case
+words.corpus <- tm_map(words.corpus, content_transformer(tolower))
+
+# Remove punctuations, numbers
+words.corpus <- tm_map(words.corpus, removePunctuation)
+words.corpus <- tm_map(words.corpus, removeNumbers)
+```
+
+```{r}
+# How about stopwords, then uniform bag of words created
+words.corpus <- tm_map(words.corpus, removeWords, stopwords("english"))
+
+# Create Term Document Matrix
+tdm <- TermDocumentMatrix(words.corpus)
+inspect(tdm)
+#
+
+
+
+```
+
+```{r}
+m <- as.matrix(tdm)
+wordCounts <- rowSums(m)
+wordCounts <- sort(wordCounts, decreasing=TRUE)
+head(wordCounts)
+
+
+
+```
+
+```{r}
+# Create Wordcloud
+cloudFrame <- data.frame(word=names(wordCounts),freq=wordCounts)
+
+set.seed(1234)
+wordcloud(cloudFrame$word,cloudFrame$freq)
+wordcloud(names(wordCounts),wordCounts, min.freq=3,random.order=FALSE, max.words=500,scale=c(3,.5), rot.per=0.35,colors=brewer.pal(8,"Dark2"))
+```
